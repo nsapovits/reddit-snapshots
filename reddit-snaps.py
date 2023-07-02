@@ -10,12 +10,14 @@ subreddits = ["apple",
               "cars",
               "costco",
               "electricvehicles",
+              "lego",
               "maryland",
               "sysadmin"]
 
 # Build a yyyymmdd date for screenshots
 today = datetime.now()
-date = "-" + today.strftime("%Y%m%d")
+date = today.strftime("%Y%m%d")
+os.makedirs(r"output/" + date)
 
 # Set Firefox options to run in headless mode (without opening a visible browser window)
 options = Options()
@@ -36,18 +38,18 @@ time.sleep(3)
 driver.get("https://old.reddit.com/r/all/top/")
 element = driver.find_element(By.XPATH, "/html/body/div[4]/section/a[2]")
 element.click()
-driver.save_full_page_screenshot(r"output/all" + date + ".png")
-image = Image.open(r"output/all" + date + ".png")
-image.convert("RGB").save(r"output/all" + date + ".jpg", "JPEG")
-os.remove(r"output/all" + date + ".png")
+driver.save_full_page_screenshot(r"output/" + date + "/all.png")
+image = Image.open(r"output/" + date + "/all.png")
+image.convert("RGB").save(r"output/" + date + "/all.jpg", "JPEG")
+os.remove(r"output/" + date + "/all.png")
 
 # Iterate through subreddits of interest
 for subreddit in subreddits:
     driver.get("https://old.reddit.com/r/" + subreddit + "/top/")
-    driver.save_full_page_screenshot(r"output/" + subreddit + date + ".png")
-    image = Image.open(r"output/" + subreddit + date + ".png")
-    image.convert("RGB").save(r"output/" + subreddit + date + ".jpg", "JPEG")
-    os.remove(r"output/" + subreddit + date + ".png")
+    driver.save_full_page_screenshot(r"output/" + date + "/" + subreddit + ".png")
+    image = Image.open(r"output/" + date + "/" + subreddit + ".png")
+    image.convert("RGB").save(r"output/" + date + "/" + subreddit + ".jpg", "JPEG")
+    os.remove(r"output/" + date + "/" + subreddit + ".png")
 
 # Clean up and quit the WebDriver
 driver.quit()
