@@ -1,0 +1,51 @@
+body {
+    font-family: Tahoma, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 10px;
+    padding: 5px;
+    background-color: black;
+    color: silver;
+}
+
+table {
+    width: 98vw;
+    border-collapse: collapse;
+}
+
+table, th, td {
+    padding: 0.5vw;
+}
+
+th {
+    font-weight: bold;
+    background-color: dimgray;
+    color: gainsboro;
+    font-size: medium !important;
+    text-align: left;
+}
+
+tr:nth-child(even) {
+    background-color: #161616;
+}
+
+.title {
+    font-size: large;
+}
+
+.domain {
+    text-align: right;
+    font-size: x-small;
+}
+
+.score {
+}
+
+.comment {
+}
+
+.comment, .score {
+    text-align: right;
+    font-size: small;
+}
