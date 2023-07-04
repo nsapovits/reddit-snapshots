@@ -36,16 +36,21 @@ tr:nth-child(even) {
 
 .domain {
     text-align: right;
-    font-size: x-small;
+    font-size: x-small !important;
 }
 
 .score {
 }
 
-.comment {
+.comments {
 }
 
-.comment, .score {
+.score, .comments {
     text-align: right;
     font-size: small;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
 }
