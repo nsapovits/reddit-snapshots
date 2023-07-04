@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+# TODO: push style.css into output directory
+
 # import os
 # import time
 from selenium import webdriver
