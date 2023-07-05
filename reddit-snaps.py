@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 # TODO: push style.css into output directory
+# email integration for run logs?
+# dating html files and having a way to browse past files
+# maybe relabel image, video, self posts links in some way
+# maybe redirect image links to raw image, what about videos?
 
 # import os
 # import time
@@ -10,8 +14,9 @@ from bs4 import BeautifulSoup
 
 use_local_source = True
 use_headless_mode = True
-use_print_as_debug = True
+use_print_as_debug = False
 
+posts = 0
 subreddits = ['News',
               'WorldNews',
               'Maryland',
@@ -26,7 +31,7 @@ subreddits = ['News',
               'Costco',
               'Lego',
               'TMobile',
-              'WOW',
+              'WoW',
               'XBox',
               'XBoxGamePass',
               'XBoxSeriesX'
@@ -44,38 +49,47 @@ if not use_local_source:
     # Create a Firefox WebDriver instance
     driver = webdriver.Firefox(options=options)
 
-file = open(r'output/output.html', 'w+', encoding='utf-8')
+file = open(r'output/index.html', 'w+', encoding='utf-8')
 
 file.write('<!DOCTYPE html>\n'
            '<html lang="en">\n'
            '\t<head>\n'
            '\t\t<title>Reddit</title>\n'
            '\t\t<link rel="stylesheet" type="text/css" href="../style.css">\n'
+           '\t\t<meta charset="UTF-8">\n'
+           '\t\t<meta name="referrer" content="no-referrer">\n'
            '\t</head>\n'
            '\t<body>\n'
            '\t\t<table>\n')
 
 # Iterate through subreddits of interest
 for subreddit in subreddits:
+
+    reddit_domains = ['self.' + subreddit.lower(),
+                      'i.redd.it',
+                      'v.redd.it',
+                      'old.reddit.com',
+                      'reddit.com']
+
     file.write('\t\t\t<tr>\n'
                '\t\t\t\t<th class="title" colspan="4">'
-               '<a href="https://old.reddit.com/r/' + subreddit + '/top/">' + subreddit + '</a></th>\n'
+               '<a target="_blank" href="https://old.reddit.com/r/' + subreddit + '/top/">' + subreddit + '</a></th>\n'
                '\t\t\t</tr>\n')
 
     if use_local_source:
-        print('using local source')
-        html_source = open(r'output/' + subreddit + '.html', 'r', encoding='utf-8')
+        print('using local source at /output/local/' + subreddit.lower() + '.html')
+        html_source = open(r'output/local/' + subreddit.lower() + '.html', 'r', encoding='utf-8')
     else:
         print('using web source')
         # noinspection PyUnboundLocalVariable
-        driver.get("https://old.reddit.com/r/" + subreddit + "/top/")
+        driver.get("https://old.reddit.com/r/" + subreddit.lower() + "/top/")
         html_source = driver.page_source
 
     soup = BeautifulSoup(html_source, 'html.parser')
 
     if not use_local_source:
         source = soup.prettify()
-        with open(r'output/' + subreddit + '.html', '+w', encoding='utf-8') as export:
+        with open(r'output/local/' + subreddit.lower() + '.html', '+w', encoding='utf-8') as export:
             export.write(source)
 
     # Find all post elements
@@ -92,35 +106,42 @@ for subreddit in subreddits:
         link = post.find('a', class_='title')['href']
         score = post.find('div', class_='score unvoted').text.strip()
         comments = post.find('a', class_='comments').text.split()[0]
+        c_link = post.find('a', class_='comments')['href']
         domain = post.find('span', class_='domain').text.strip()
 
         title = title.strip()
         domain = domain.replace('(', '').replace(')', '').strip()
         score = score.strip()
-        comments = comments.replace(' comments', '').replace(' comment', '').strip()
-
-        # TODO: fix links to reddit's own sites
-        # Example: "/r/XboxSeriesX/comments/14pt1v0/buying_witcher_3_on_xbox_nextgen_updated_included/"
+        comments = comments.replace(' comments', '').replace(' comment', '').replace('comment', '0').strip()
 
         if use_print_as_debug:
-            print('"' + title + '","' + domain + '","' + score + '","' + comments + '","' + link + '"')
+            print('"' + title + '","'
+                      + domain + '","'
+                      + score + '","'
+                      + comments + '","'
+                      + c_link + '","'
+                      + link + '"')
 
         try:
             if int(score) <= 1:
-                print('found low-scoring post - skipping...')
                 continue
         except ValueError:
-            print('casting score to int failed - continuing...')
+            pass
 
         if score == "•":
             score = "-"
 
+        if domain.lower() in reddit_domains:
+            link = c_link
+
         file.write('\t\t\t\t<tr>\n'
-                   '\t\t\t\t\t<td class="title"><a href="' + link + '">' + title + '</a></td>\n'
+                   '\t\t\t\t\t<td class="title"><a target="_blank" href="' + link + '">' + title + '</a></td>\n'
                    '\t\t\t\t\t<td class="domain">' + domain + '</td>\n'
                    '\t\t\t\t\t<td class="score">' + score + '</td>\n'
-                   '\t\t\t\t\t<td class="comments">' + comments + '</td>\n'
+                   '\t\t\t\t\t<td class="comments"><a target="_blank" href="' + c_link + '">' + comments + '</a></td>\n'
                    '\t\t\t\t</tr>\n')
+
+        posts += 1
 
 if not use_local_source:
     driver.quit()
@@ -130,3 +151,4 @@ file.write('\t\t</table>\n'
            '</html>\n')
 
 file.close()
+print('processed ' + str(posts) + ' posts')
