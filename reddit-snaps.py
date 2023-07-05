@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-# TODO: push style.css into output directory
+# TODO:
+# push style.css into output directory
 # email integration for run logs?
 # dating html files and having a way to browse past files
 # maybe relabel image, video, self posts links in some way
@@ -55,7 +56,7 @@ file.write('<!DOCTYPE html>\n'
            '<html lang="en">\n'
            '\t<head>\n'
            '\t\t<title>Reddit</title>\n'
-           '\t\t<link rel="stylesheet" type="text/css" href="../style.css">\n'
+           '\t\t<link rel="stylesheet" type="text/css" href="style.css">\n'
            '\t\t<meta charset="UTF-8">\n'
            '\t\t<meta name="referrer" content="no-referrer">\n'
            '\t</head>\n'
