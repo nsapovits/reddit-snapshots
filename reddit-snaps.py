@@ -34,6 +34,7 @@ subreddits = ['News',
               'Lego',
               'TMobile',
               'WoW',
+              'NintendoSwitch',
               'XBox',
               'XBoxGamePass',
               'XBoxSeriesX'
@@ -80,7 +81,11 @@ for subreddit in subreddits:
 
     if use_local_source:
         print('using local source at /output/local/' + subreddit.lower() + '.html')
-        html_source = open(r'output/local/' + subreddit.lower() + '.html', 'r', encoding='utf-8')
+        try:
+            html_source = open(r'output/local/' + subreddit.lower() + '.html', 'r', encoding='utf-8')
+        except OSError:
+            print('could not find source for ' + subreddit.lower())
+            continue
     else:
         print('using web source')
         # noinspection PyUnboundLocalVariable
