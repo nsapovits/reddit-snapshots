@@ -18,6 +18,7 @@ use_headless_mode = True
 use_print_as_debug = False
 
 posts = 0
+reddit = 'https://old.reddit.com/r/'
 subreddits = ['News',
               'WorldNews',
               'Maryland',
@@ -74,7 +75,7 @@ for subreddit in subreddits:
 
     file.write('\t\t\t<tr>\n'
                '\t\t\t\t<th class="title" colspan="4">'
-               '<a target="_blank" href="https://old.reddit.com/r/' + subreddit + '/top/">' + subreddit + '</a></th>\n'
+               '<a target="_blank" href="' + reddit + subreddit + '/top/">' + subreddit + '</a></th>\n'
                '\t\t\t</tr>\n')
 
     if use_local_source:
@@ -83,7 +84,7 @@ for subreddit in subreddits:
     else:
         print('using web source')
         # noinspection PyUnboundLocalVariable
-        driver.get("https://old.reddit.com/r/" + subreddit.lower() + "/top/")
+        driver.get(reddit + subreddit.lower() + "/top/")
         html_source = driver.page_source
 
     soup = BeautifulSoup(html_source, 'html.parser')
