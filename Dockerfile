@@ -17,7 +17,10 @@ RUN chmod +x run.sh
 
 # Install dependencies
 RUN apk update
-RUN apk add git nano xvfb firefox ttf-dejavu
+RUN apk add git nano xvfb firefox ttf-dejavu tar curl
+
+# Is there a better way to download the driver?
+RUN curl -L https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux-$(arch).tar.gz | tar xz -C /usr/local/bin
 
 # Install python/pip
 ENV PYTHONUNBUFFERED=1
