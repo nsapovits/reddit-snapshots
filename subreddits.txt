@@ -8,7 +8,6 @@ NVidia
 SysAdmin
 Cars
 ElectricVehicles
-Bluey
 Cordcutters
 Costco
 Lego
