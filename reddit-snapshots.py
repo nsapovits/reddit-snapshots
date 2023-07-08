@@ -14,7 +14,7 @@ from selenium.webdriver.firefox.options import Options
 from bs4 import BeautifulSoup
 
 # Flags
-use_local_source = True
+use_local_source = False
 use_headless_mode = True
 use_print_as_debug = False
 
