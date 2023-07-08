@@ -43,7 +43,7 @@ RUN cp style.css output/
 #RUN python3 reddit-snapshots.py
 
 # Set up cron job to run script daily
-RUN echo -e '30\t3\t*\t*\t*\tsh /usr/bin/python3 /reddit-snapshots/reddit-snapshots.py' | tee -a /etc/crontabs/root
+RUN echo -e '30\t3\t*\t*\t*\t/usr/bin/python3 /reddit-snapshots/reddit-snapshots.py' | tee -a /etc/crontabs/root
 
 # Use the run.sh file we created earlier to start cron, the Xvfb, and the Python HTTP server
 CMD ["/bin/sh", "-c", "/run.sh"]
