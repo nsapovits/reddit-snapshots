@@ -23,7 +23,7 @@ RUN apk add git nano xvfb firefox ttf-dejavu tar curl
 ARG ORG=mozilla
 ARG REPO=geckodriver
 ARG VERSION=$(curl -s https://api.github.com/repos/${ORG}/${REPO}/releases/latest | grep "tag_name" | cut -d'v' -f2 | cut -d'"' -f1)
-RUN curl -L https://github.com/${ORG}/${REPO}/releases/download/latest/geckodriver-v${VERSION}-linux-$(arch).tar.gz | tar xz -C /usr/local/bin
+RUN curl -L https://github.com/${ORG}/${REPO}/releases/download/v${VERSION}/geckodriver-v${VERSION}-linux-$(arch).tar.gz | tar xz -C /usr/local/bin
 #RUN curl -L https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux-$(arch).tar.gz | tar xz -C /usr/local/bin
 
 # Install python/pip
