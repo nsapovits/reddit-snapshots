@@ -1,5 +1,8 @@
 FROM alpine
 
+# Set architecture
+ARG ARCH=aarch64
+
 # Just be sure we start in /
 WORKDIR "/"
 
