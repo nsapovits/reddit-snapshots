@@ -33,7 +33,6 @@ RUN pip3 install selenium
 # Can probably do this better with COPY or ADD commands instead
 RUN git clone https://github.com/nsapovits/reddit-snapshots.git
 WORKDIR "/reddit-snapshots"
-RUN chmod +x cron.sh
 
 # Prep for script execution
 RUN mkdir output
