@@ -23,7 +23,7 @@ posts = 0
 reddit = 'https://old.reddit.com/r/'
 
 # Read "subreddits.txt" for targets
-with open('subreddits.txt', 'r') as file:
+with open(r'subreddits.txt', 'r') as file:
     subreddits_raw = file.readlines()
 subreddits = [subreddit.strip() for subreddit in subreddits_raw]
 
@@ -72,7 +72,7 @@ for subreddit in subreddits:
 
     # Determine which source to use and start loading it
     if use_local_source:
-        print('using local source at /output/local/' + subreddit.lower() + '.html')
+        print('using local source at output/local/' + subreddit.lower() + '.html')
         try:
             html_source = open(r'output/local/' + subreddit.lower() + '.html', 'r', encoding='utf-8')
         except OSError:

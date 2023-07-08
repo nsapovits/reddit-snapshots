@@ -43,9 +43,6 @@ RUN cp style.css output/
 # Execute script (first-run)
 #RUN python3 reddit-snapshots.py
 
-# Start Python HTTP server
-WORKDIR "/reddit-snapshots/output"
-
 # Set up cron job to run script daily
 RUN echo -e '30\t3\t*\t*\t*\tsh python3 /reddit-snapshots/reddit-snapshots.py' | tee -a /etc/crontabs/root
 
