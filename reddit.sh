@@ -8,4 +8,4 @@ crond -l 8
 /usr/bin/Xvfb :99 -ac &
 
 # Simple HTTP server hosting output dir (foreground)
-exec python3 -m http.server 8181 -d /reddit-snapshots/output/
+exec /opt/venv/bin/python -m http.server 8181 -d /reddit-snapshots/output/
