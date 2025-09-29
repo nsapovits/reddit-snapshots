@@ -1,5 +1,6 @@
 News
 WorldNews
+Technology
 Maryland
 Apple
 AMD
@@ -10,10 +11,10 @@ Cars
 ElectricVehicles
 Cordcutters
 Costco
-Lego
-TMobile
+USMobile
 WoW
+ClassicWoW
+Gaming
 NintendoSwitch
 XBox
 XBoxGamePass
-XBoxSeriesX
