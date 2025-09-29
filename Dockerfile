@@ -15,7 +15,7 @@ COPY . /reddit-snapshots
 WORKDIR /reddit-snapshots
 RUN mkdir -p output/local && cp style.css output/ || true
 
-RUN printf '0\t3\t*\t*\t*\tcd /reddit-snapshots && /usr/bin/python3 /reddit-snapshots/reddit-snapshots.py\n' > /etc/crontabs/root
+RUN printf '0\t3\t*\t*\t*\tcd /reddit-snapshots && /opt/venv/bin/python /reddit-snapshots/reddit-snapshots.py\n' > /etc/crontabs/root
 COPY reddit.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/reddit.sh
 
