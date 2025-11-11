@@ -131,6 +131,12 @@ def extract_rows_from_listing(listing, subreddit):
         # Prefer external destination; if Reddit-internal, use comments link
         link = d.get("url_overridden_by_dest") or d.get("url") or comments_link
 
+        # Rewrite "www.reddit.com" to "old.reddit.com"
+        if link and "www.reddit.com" in link:
+            link = link.replace("www.reddit.com", "old.reddit.com")
+        if comments_link and "www.reddit.com" in comments_link:
+            comments_link = comments_link.replace("www.reddit.com", "old.reddit.com")
+
         reddit_domains = {
             f"self.{subreddit.lower()}",
             "i.redd.it", "v.redd.it", "old.reddit.com", "reddit.com", "www.reddit.com"
