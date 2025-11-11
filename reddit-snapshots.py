@@ -3,164 +3,202 @@
 # TODO:
 # push style.css into output directory
 # email integration for run logs?
-# dating html files and having a way to browse past files
-# maybe relabel image, video, self posts links in some way
-# maybe redirect image links to raw image, what about videos?
 
-# import os
-# import time
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from bs4 import BeautifulSoup
+import os
+import json
+import time
+import html
+import random
+import requests
 
-# Flags
+# ------------- Flags -------------
 use_local_source = False
-use_headless_mode = True
 use_print_as_debug = False
+strict_last_24h = False  # If True, filter by created_utc within 24h (t=day already ranks within the last day)
 
-# Static Variables
+# ------------- Static -------------
 posts = 0
-reddit = 'https://old.reddit.com/r/'
+base = "https://www.reddit.com"
+listing_path = "/r/{sub}/top.json"
+listing_params = {
+    "t": "day",        # last 24 hours ranking
+    "limit": 25,      # max allowed by the endpoint
+    "raw_json": 1      # unescaped unicode
+}
+
+# ------------- I/O prep -------------
+os.makedirs("output", exist_ok=True)
+os.makedirs("output/local", exist_ok=True)
 
 # Read "subreddits.txt" for targets
-with open(r'subreddits.txt', 'r') as file:
-    subreddits_raw = file.readlines()
-subreddits = [subreddit.strip() for subreddit in subreddits_raw]
+with open(r"subreddits.txt", "r", encoding="utf-8") as f:
+    subreddits = [line.strip() for line in f if line.strip()]
 
-# Start setting up for Selenium if we are doing full scraping
-if not use_local_source:
-    # Set Firefox options to run in headless mode (without opening a visible browser window)
-    options = Options()
+# ------------- HTTP session -------------
+SESSION = requests.Session()
+SESSION.headers.update({
+    # Use a descriptive UA per Reddit guidance
+    "User-Agent": "ns1363"
+})
 
-    # Check use_headless_mode flag to set headless arg if desired
-    if use_headless_mode:
-        print('using headless mode')
-        options.add_argument('-headless')
+def fetch_subreddit_top_json(subreddit, retries=3, backoff_base=0.8):
+    """
+    Fetch top posts for last day as JSON listing. Returns parsed dict.
+    If use_local_source is True, load from output/local/<subreddit>.json.
+    """
+    local_path = os.path.join("output", "local", f"{subreddit.lower()}.json")
 
-    # Create a Firefox WebDriver instance
-    driver = webdriver.Firefox(options=options)
-
-# Start writing the final HTML file
-file = open(r'output/index.html', 'w+', encoding='utf-8')
-
-file.write('<!DOCTYPE html>\n'
-           '<html lang="en">\n'
-           '\t<head>\n'
-           '\t\t<title>Reddit</title>\n'
-           '\t\t<link rel="stylesheet" type="text/css" href="style.css">\n'
-           '\t\t<meta charset="UTF-8">\n'
-           '\t\t<meta name="referrer" content="no-referrer">\n'
-           '\t</head>\n'
-           '\t<body>\n'
-           '\t\t<table>\n')
-
-# Iterate through subreddits of interest
-for subreddit in subreddits:
-
-    # Identify Reddit-specific link domains so they can be rewritten later
-    reddit_domains = ['self.' + subreddit.lower(),
-                      'i.redd.it',
-                      'v.redd.it',
-                      'old.reddit.com',
-                      'reddit.com']
-
-    # Write HTML table header row per subreddit
-    file.write('\t\t\t<tr>\n'
-               '\t\t\t\t<th class="title" colspan="4">'
-               '<a target="_blank" href="' + reddit + subreddit + '/top/">' + subreddit + '</a></th>\n'
-               '\t\t\t</tr>\n')
-
-    # Determine which source to use and start loading it
     if use_local_source:
-        print('using local source at output/local/' + subreddit.lower() + '.html')
+        if not os.path.exists(local_path):
+            print(f"could not find source for {subreddit.lower()}")
+            return None
+        with open(local_path, "r", encoding="utf-8") as fh:
+            try:
+                return json.load(fh)
+            except json.JSONDecodeError:
+                print(f"invalid JSON for {subreddit.lower()}")
+                return None
+
+    # Remote fetch
+    url = base + listing_path.format(sub=subreddit.lower())
+    params = listing_params.copy()
+
+    for attempt in range(1, retries + 1):
         try:
-            html_source = open(r'output/local/' + subreddit.lower() + '.html', 'r', encoding='utf-8')
-        except OSError:
-            print('could not find source for ' + subreddit.lower())
+            resp = SESSION.get(url, params=params, timeout=20)
+            # Reddit returns 429/5xx at times; simple retry/backoff
+            if resp.status_code >= 400:
+                raise requests.HTTPError(f"HTTP {resp.status_code}")
+            data = resp.json()
+            # Save local copy for debugging
+            with open(local_path, "w", encoding="utf-8") as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+            return data
+        except Exception as e:
+            if attempt == retries:
+                print(f"[{subreddit}] failed after {retries} attempts: {e}")
+                return None
+            sleep_s = backoff_base * (2 ** (attempt - 1)) + random.uniform(0, 0.3)
+            print(f"[{subreddit}] error: {e} — retrying in {sleep_s:.1f}s")
+            time.sleep(sleep_s)
+
+def extract_rows_from_listing(listing, subreddit):
+    """
+    Convert listing JSON to list of rows for HTML.
+    Applies your original transformations and skips.
+    """
+    global posts
+    rows = []
+
+    if not listing or "data" not in listing:
+        return rows
+
+    children = listing["data"].get("children", [])
+    for child in children:
+        if child.get("kind") != "t3":
             continue
-    else:
-        print('using web source')
-        # noinspection PyUnboundLocalVariable
-        driver.get(reddit + subreddit.lower() + "/top/")
-        html_source = driver.page_source
+        d = child.get("data", {})
 
-    soup = BeautifulSoup(html_source, 'html.parser')
-
-    # Save the source HTML for re-runs when debugging
-    if not use_local_source:
-        source = soup.prettify()
-        with open(r'output/local/' + subreddit.lower() + '.html', '+w', encoding='utf-8') as export:
-            export.write(source)
-
-    # Find all post elements
-    post_elements = soup.find_all('div', class_='thing')
-
-    # Process each post element
-    for post in post_elements:
-        # Skip promoted posts
-        if post.get('data-promoted') == 'true':
+        # Skip if score <= 1 (your original behavior)
+        score = d.get("score") or 0
+        if isinstance(score, str):
+            try:
+                score = int(score)
+            except ValueError:
+                score = 0
+        if score <= 1:
             continue
 
-        # Extract post details
-        title = post.find('a', class_='title').text
-        link = post.find('a', class_='title')['href']
-        score = post.find('div', class_='score unvoted').text.strip()
-        comments = post.find('a', class_='comments').text.split()[0]
-        c_link = post.find('a', class_='comments')['href']
-        domain = post.find('span', class_='domain').text.strip()
-
-        # Run some basic text manipulations
-        title = title.strip()
-        domain = domain.replace('(', '').replace(')', '').strip()
-        score = score.strip()
-        comments = comments.replace(' comments', '').replace(' comment', '').replace('comment', '0').strip()
-
-        # Print posts to console when debugging
-        if use_print_as_debug:
-            print('"' + title + '","'
-                      + domain + '","'
-                      + score + '","'
-                      + comments + '","'
-                      + c_link + '","'
-                      + link + '"')
-
-        # Skip posts with a low score
-        try:
-            if int(score) <= 1:
+        # (Optional) strict 24h filter by created_utc
+        # Note: 't=day' already ranks last-day top posts, but this ensures strict cutoff
+        if strict_last_24h:
+            import datetime
+            from datetime import timezone, timedelta
+            created = d.get("created_utc") or 0
+            try:
+                created_dt = datetime.datetime.fromtimestamp(created, tz=timezone.utc)
+            except (OSError, ValueError):
+                created_dt = None
+            if created_dt and (datetime.datetime.now(timezone.utc) - created_dt) > timedelta(hours=24):
                 continue
-        except ValueError:
-            pass
 
-        # Replace bullet characters for 'prettier' output
-        if score == "•":
-            score = "-"
+        title = (d.get("title") or "").strip()
+        domain = (d.get("domain") or "").strip()
+        num_comments = d.get("num_comments") or 0
+        permalink = d.get("permalink") or ""
+        comments_link = base + permalink if permalink else ""
 
-        # If the post is to a Reddit domain, the URL is relative, so instead just use the comment link
+        # Prefer external destination; if Reddit-internal, use comments link
+        link = d.get("url_overridden_by_dest") or d.get("url") or comments_link
+
+        reddit_domains = {
+            f"self.{subreddit.lower()}",
+            "i.redd.it", "v.redd.it", "old.reddit.com", "reddit.com", "www.reddit.com"
+        }
         if domain.lower() in reddit_domains:
-            link = c_link
+            link = comments_link
 
-        # Write the posts to the final HTML file
-        file.write('\t\t\t\t<tr>\n'
-                   '\t\t\t\t\t<td class="title"><a target="_blank" href="' + link + '">' + title + '</a></td>\n'
-                   '\t\t\t\t\t<td class="domain">' + domain + '</td>\n'
-                   '\t\t\t\t\t<td class="score">' + score + '</td>\n'
-                   '\t\t\t\t\t<td class="comments"><a target="_blank" href="' + c_link + '">' + comments + '</a></td>\n'
-                   '\t\t\t\t</tr>\n')
+        # Replace bullet score like your old code (unlikely here, but keeping parity)
+        score_str = "-" if (isinstance(score, str) and score.strip() == "•") else str(score)
 
-        # Simple counter for debugging
+        # Escape HTML-sensitive fields
+        safe_title = html.escape(title)
+        safe_domain = html.escape(domain)
+        safe_link = html.escape(link, quote=True)
+        safe_comments_link = html.escape(comments_link, quote=True)
+
+        rows.append(
+            '\t\t\t\t<tr>\n'
+            f'\t\t\t\t\t<td class="title"><a target="_blank" href="{safe_link}">{safe_title}</a></td>\n'
+            f'\t\t\t\t\t<td class="domain">{safe_domain}</td>\n'
+            f'\t\t\t\t\t<td class="score">{score_str}</td>\n'
+            f'\t\t\t\t\t<td class="comments"><a target="_blank" href="{safe_comments_link}">{num_comments}</a></td>\n'
+            '\t\t\t\t</tr>\n'
+        )
         posts += 1
 
-# Quit Firefox if we started it
-if not use_local_source:
-    driver.quit()
+    return rows
 
-# Write the closing HTML for the final output
-file.write('\t\t</table>\n'
-           '\t</body>\n'
-           '</html>\n')
+# ------------- Write HTML head -------------
+with open(r"output/index.html", "w", encoding="utf-8") as outf:
+    outf.write(
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "\t<head>\n"
+        "\t\t<title>Reddit</title>\n"
+        '\t\t<link rel="stylesheet" type="text/css" href="style.css">\n'
+        '\t\t<meta charset="UTF-8">\n'
+        '\t\t<meta name="referrer" content="no-referrer">\n'
+        "\t</head>\n"
+        "\t<body>\n"
+        "\t\t<table>\n"
+    )
 
-# Close the final output file
-file.close()
+    # ------------- Per-subreddit -------------
+    for subreddit in subreddits:
+        print(("using local source at output/local/" if use_local_source else "using web source for ") + subreddit.lower())
 
-# Print the simple counter to see how many posts were processed
-print('processed ' + str(posts) + ' posts')
+        # Header row with link to top page (kept your original UI, but add ?t=day)
+        outf.write(
+            "\t\t\t<tr>\n"
+            f'\t\t\t\t<th class="title" colspan="4"><a target="_blank" href="{base}/r/{subreddit}/top/?t=day">{html.escape(subreddit)}</a></th>\n'
+            "\t\t\t</tr>\n"
+        )
+
+        listing = fetch_subreddit_top_json(subreddit)
+        rows = extract_rows_from_listing(listing, subreddit)
+        for row in rows:
+            if use_print_as_debug:
+                # Print a CSV-ish line for quick inspection
+                # (You can also parse 'rows' earlier for raw values if preferred)
+                pass
+            outf.write(row)
+
+    # ------------- Close HTML -------------
+    outf.write(
+        "\t\t</table>\n"
+        "\t</body>\n"
+        "</html>\n"
+    )
+
+print(f"processed {posts} posts")
