@@ -1,11 +1,11 @@
 #!/usr/bin/env sh
 set -eu
 
-# Start cron (background, logs to stdout)
+# Start cron in the background (log level 8 for debugging)
 crond -l 8
 
-# Start X virtual framebuffer for Firefox
-/usr/bin/Xvfb :99 -ac &
+# Optional: log something so you know cron started
+echo "[reddit.sh] Cron daemon started."
 
-# Simple HTTP server hosting output dir (foreground)
-exec /opt/venv/bin/python -m http.server 8181 -d /reddit-snapshots/output/
+# Start simple HTTP server (foreground, keeps container alive)
+exec /usr/local/bin/python -m http.server 8181 -d /reddit-snapshots/output/
