@@ -10,16 +10,15 @@ import requests
 # ------------- Flags -------------
 use_local_source = False
 use_print_as_debug = False
-strict_last_24h = False  # If True, filter by created_utc within 24h (t=day already ranks within the last day)
+strict_last_24h = True   # hot + strict 24h filter + local sort by score
 
 # ------------- Static -------------
 posts = 0
 base = "https://www.reddit.com"
-listing_path = "/r/{sub}/top.json"
+listing_path = "/r/{sub}/hot.json"
 listing_params = {
-    "t": "day",        # last 24 hours ranking
-    "limit": 25,      # max allowed by the endpoint
-    "raw_json": 1      # unescaped unicode
+    "limit": 100,     # pull more, then filter/sort locally
+    "raw_json": 1     # unescaped unicode
 }
 
 # ------------- I/O prep -------------
@@ -33,13 +32,12 @@ with open(r"subreddits.txt", "r", encoding="utf-8") as f:
 # ------------- HTTP session -------------
 SESSION = requests.Session()
 SESSION.headers.update({
-    # Use a descriptive UA per Reddit guidance
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0"
 })
 
-def fetch_subreddit_top_json(subreddit, retries=3, backoff_base=0.8):
+def fetch_subreddit_hot_json(subreddit, retries=3, backoff_base=0.8):
     """
-    Fetch top posts for last day as JSON listing. Returns parsed dict.
+    Fetch hot posts as JSON listing. Returns parsed dict.
     If use_local_source is True, load from output/local/<subreddit>.json.
     """
     local_path = os.path.join("output", "local", f"{subreddit.lower()}.json")
@@ -62,7 +60,6 @@ def fetch_subreddit_top_json(subreddit, retries=3, backoff_base=0.8):
     for attempt in range(1, retries + 1):
         try:
             resp = SESSION.get(url, params=params, timeout=20)
-            # Reddit returns 429/5xx at times; simple retry/backoff
             if resp.status_code >= 400:
                 raise requests.HTTPError(f"HTTP {resp.status_code}")
             data = resp.json()
@@ -81,6 +78,7 @@ def fetch_subreddit_top_json(subreddit, retries=3, backoff_base=0.8):
 def extract_rows_from_listing(listing, subreddit):
     """
     Convert listing JSON to list of rows for HTML.
+    Now: hot.json -> strict last 24h -> sort by score desc -> top 25 (or fewer).
     Applies your original transformations and skips.
     """
     global posts
@@ -90,33 +88,48 @@ def extract_rows_from_listing(listing, subreddit):
         return rows
 
     children = listing["data"].get("children", [])
+
+    # Collect post data first, then filter/sort before rendering rows
+    cutoff = int(time.time()) - 24 * 60 * 60
+    post_dicts = []
+
     for child in children:
         if child.get("kind") != "t3":
             continue
         d = child.get("data", {})
 
-        # Skip if score <= 1 (your original behavior)
+        # Score normalization (keep your original handling)
         score = d.get("score") or 0
         if isinstance(score, str):
             try:
                 score = int(score)
             except ValueError:
                 score = 0
+
+        # Skip if score <= 1 (your original behavior)
         if score <= 1:
             continue
 
-        # (Optional) strict 24h filter by created_utc
-        # Note: 't=day' already ranks last-day top posts, but this ensures strict cutoff
-        if strict_last_24h:
-            import datetime
-            from datetime import timezone, timedelta
-            created = d.get("created_utc") or 0
-            try:
-                created_dt = datetime.datetime.fromtimestamp(created, tz=timezone.utc)
-            except (OSError, ValueError):
-                created_dt = None
-            if created_dt and (datetime.datetime.now(timezone.utc) - created_dt) > timedelta(hours=24):
-                continue
+        # Strict 24h filter by created_utc (primary daily definition now)
+        created = d.get("created_utc") or 0
+        try:
+            created = int(created)
+        except (TypeError, ValueError):
+            created = 0
+
+        if strict_last_24h and created < cutoff:
+            continue
+
+        d["_score_norm"] = score  # stash normalized score for sorting
+        post_dicts.append(d)
+
+    # Sort by score descending, then take up to 25
+    post_dicts.sort(key=lambda x: x.get("_score_norm", 0), reverse=True)
+    post_dicts = post_dicts[:25]
+
+    # Render rows
+    for d in post_dicts:
+        score = d.get("_score_norm", 0)
 
         title = (d.get("title") or "").strip()
         domain = (d.get("domain") or "").strip()
@@ -180,19 +193,17 @@ with open(r"output/index.html", "w", encoding="utf-8") as outf:
     for subreddit in subreddits:
         print(("using local source at output/local/" if use_local_source else "using web source for ") + subreddit.lower())
 
-        # Header row with link to top page (kept your original UI, but add ?t=day)
+        # Header row with link to hot page (matches new fetch logic)
         outf.write(
             "\t\t\t<tr>\n"
-            f'\t\t\t\t<th class="title" colspan="4"><a target="_blank" href="{base}/r/{subreddit}/top/?t=day">{html.escape(subreddit)}</a></th>\n'
+            f'\t\t\t\t<th class="title" colspan="4"><a target="_blank" href="{base}/r/{subreddit}/hot/">{html.escape(subreddit)}</a></th>\n'
             "\t\t\t</tr>\n"
         )
 
-        listing = fetch_subreddit_top_json(subreddit)
+        listing = fetch_subreddit_hot_json(subreddit)
         rows = extract_rows_from_listing(listing, subreddit)
         for row in rows:
             if use_print_as_debug:
-                # Print a CSV-ish line for quick inspection
-                # (You can also parse 'rows' earlier for raw values if preferred)
                 pass
             outf.write(row)
 
