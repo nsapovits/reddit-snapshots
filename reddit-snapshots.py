@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
 
-# TODO:
-# push style.css into output directory
-# email integration for run logs?
-
 import os
 import json
 import time
@@ -38,7 +34,7 @@ with open(r"subreddits.txt", "r", encoding="utf-8") as f:
 SESSION = requests.Session()
 SESSION.headers.update({
     # Use a descriptive UA per Reddit guidance
-    "User-Agent": "ns1363"
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:146.0) Gecko/20100101 Firefox/146.0"
 })
 
 def fetch_subreddit_top_json(subreddit, retries=3, backoff_base=0.8):

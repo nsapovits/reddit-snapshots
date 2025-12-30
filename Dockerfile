@@ -2,8 +2,7 @@ FROM python:3.12-alpine
 
 ENV PYTHONUNBUFFERED=1
 RUN apk add --no-cache ca-certificates
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
- && python -m pip install --no-cache-dir requests
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel requests
 
 COPY . /reddit-snapshots
 WORKDIR /reddit-snapshots
