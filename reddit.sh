@@ -22,7 +22,7 @@ if ! tailscale up --authkey="${TAILSCALE_AUTHKEY}" --hostname=reddit-snapshots -
     cat > /reddit-snapshots/output/index.html <<'HTML'
 <!DOCTYPE html>
 <html lang="en">
-<head><title>Reddit Snapshots — Error</title></head>
+<head><title>Reddit Snapshots - Error</title></head>
 <body>
 <h1>Tailscale connection failed</h1>
 <p>The container could not join the tailnet, most likely because the Tailscale auth key has expired.</p>
